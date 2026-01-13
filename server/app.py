@@ -1,27 +1,44 @@
-#!/usr/bin/env python3
+# server/app.py
 
-from flask import Flask, jsonify, request, make_response
-from flask_migrate import Migrate
-from flask_restful import Api, Resource
-
+from flask import Flask, request, jsonify
 from models import db, Plant
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///plants.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = True
 
-migrate = Migrate(app, db)
 db.init_app(app)
 
-api = Api(app)
+with app.app_context():
+    db.create_all()
 
-class Plants(Resource):
-    pass
+# GET all plants
+@app.route("/plants", methods=["GET"])
+def get_plants():
+    plants = Plant.query.all()
+    return jsonify([p.to_dict() for p in plants]), 200
 
-class PlantByID(Resource):
-    pass
-        
+# GET plant by id
+@app.route("/plants/<int:id>", methods=["GET"])
+def get_plant_by_id(id):
+    plant = Plant.query.get(id)
+    if not plant:
+        return {"error": "Plant not found"}, 404
+    return jsonify(plant.to_dict()), 200
 
-if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+# POST new plant
+@app.route("/plants", methods=["POST"])
+def create_plant():
+    data = request.get_json()
+    name = data.get("name")
+    image = data.get("image")
+    price = data.get("price")
+
+    if not name:
+        return {"error": "Name is required"}, 400
+
+    new_plant = Plant(name=name, image=image, price=price)
+    db.session.add(new_plant)
+    db.session.commit()
+
+    return jsonify(new_plant.to_dict()), 201
