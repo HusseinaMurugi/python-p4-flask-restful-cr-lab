@@ -1,13 +1,15 @@
 # server/app.py
 
 from flask import Flask, request, jsonify
+from flask_migrate import Migrate
 from models import db, Plant
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///plants.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+migrate = Migrate(app, db)
 
 with app.app_context():
     db.create_all()
@@ -21,7 +23,7 @@ def get_plants():
 # GET plant by id
 @app.route("/plants/<int:id>", methods=["GET"])
 def get_plant_by_id(id):
-    plant = Plant.query.get(id)
+    plant = db.session.get(Plant, id)
     if not plant:
         return {"error": "Plant not found"}, 404
     return jsonify(plant.to_dict()), 200
